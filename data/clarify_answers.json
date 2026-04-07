@@ -1,0 +1,14 @@
+{
+    "did the patient report any fever?": "No. Jane Doe denied fever throughout the visit. She mentioned mild body aches in the first two days that had since resolved.",
+    "what over-the-counter medications has the patient tried?": "The patient took generic DayQuil for two days but stopped because she was uncertain about interactions with her penicillin allergy. No other OTC medications were tried.",
+    "what was the patient's blood pressure reading?": "Blood pressure was 118/76 mmHg with a heart rate of 72 bpm, recorded during the visit.",
+
+    "what is the patient's current hba1c and how does it compare to the previous?": "HbA1c is 7.8%, up from 7.2% three months ago, indicating worsening glycemic control over the past quarter.",
+    "what dietary changes were discussed with the patient?": "The patient reported eating out at a barbecue restaurant 1-2 times per week with high-carb sides. The physician recommended limiting restaurant meals to once weekly and substituting starchy sides with salads or steamed vegetables.",
+    "was a new medication added for diabetes and what are the side effects?": "Glipizide 5 mg once daily with breakfast was added. The main side effect discussed was potential hypoglycemia (shakiness, sweating, lightheadedness) and modest weight gain.",
+    "why was lisinopril increased?": "Home blood pressure readings were averaging 135/85 and the in-office reading was 142/88, both above the target of 130/80 for a diabetic patient. The dose was increased from 20 mg to 40 mg daily. The patient reported no cough or dizziness on the current dose.",
+
+    "did the patient mention any recent travel or immobilization?": "Yes. The patient initially denied travel but then corrected herself — her daughter drove her to Sacramento last weekend, approximately five hours each way, during which she was mostly sitting.",
+    "why was ct-pa not ordered for the pe workup?": "The patient has a documented contrast dye allergy and chronic kidney disease with eGFR of 34 mL/min. Both are relative contraindications to IV contrast, so a V/Q scan was ordered instead.",
+    "did the patient contradict herself during the encounter?": "Yes. The patient initially stated the chest pain started while watching TV and she came straight in. She later disclosed that she had taken a nitroglycerin tablet at home before calling 911, which provided transient partial relief for about five minutes before the pain returned."
+}

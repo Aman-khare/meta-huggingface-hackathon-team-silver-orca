@@ -1,0 +1,211 @@
+# OpenEnv Environment Specification
+# Clinical Note Scribe — Meta × Hugging Face OpenEnv Hackathon
+
+name: meta-huggingface-hackathon-team-silver-orca
+version: 1.0.0
+description: >
+  An OpenEnv-compliant environment for evaluating AI agents on clinical
+  SOAP-note generation from doctor–patient transcripts. Agents receive a
+  transcript and patient context, then must produce a well-structured,
+  clinically accurate SOAP note through submit, revise, or clarify actions.
+
+# ---------------------------------------------------------------------------
+# Tasks
+# ---------------------------------------------------------------------------
+tasks:
+  - id: easy_routine_checkup
+    description: >
+      Generate a SOAP note for a routine annual check-up visit.
+      6-turn dialogue covering a simple upper respiratory infection
+      and a blood pressure screening.
+    difficulty: easy
+    max_steps: 5
+    grader: grade_easy
+
+  - id: medium_chronic_disease_followup
+    description: >
+      Generate a SOAP note for a Type 2 Diabetes and Hypertension
+      follow-up visit. 14-turn dialogue including medication adjustments
+      (glipizide addition, lisinopril uptitration), HbA1c lab review,
+      and dietary counseling.
+    difficulty: medium
+    max_steps: 8
+    grader: grade_medium
+
+  - id: hard_complex_er_visit
+    description: >
+      Generate a SOAP note for a complex emergency-room visit with
+      overlapping chest pain, shortness of breath, and a possible
+      pulmonary embolism. 20-turn dialogue with differential diagnoses,
+      urgent orders, a patient self-contradiction, and contrast-allergy
+      complications.
+    difficulty: hard
+    max_steps: 10
+    grader: grade_hard
+
+# ---------------------------------------------------------------------------
+# API Endpoints
+# ---------------------------------------------------------------------------
+api:
+  base_url: http://localhost:7860
+  endpoints:
+    reset:
+      method: POST
+      path: /reset
+      request_schema: ResetRequest
+      response_schema: Observation
+      description: Start a new episode for the specified task.
+
+    step:
+      method: POST
+      path: /step
+      request_schema: Action
+      response_schema: StepResponse
+      description: Submit an action and advance the environment by one step.
+
+    state:
+      method: GET
+      path: /state
+      response_schema: EnvironmentState
+      description: Return the full internal environment state without mutation.
+
+    health:
+      method: GET
+      path: /health
+      response_schema: HealthResponse
+      description: Liveness probe; returns {"status":"ok"}.
+
+# ---------------------------------------------------------------------------
+# Schemas (Pydantic v2 models in environment/models.py)
+# ---------------------------------------------------------------------------
+schemas:
+  Observation:
+    fields:
+      - name: transcript
+        type: str
+        description: Full doctor–patient transcript for the current task.
+      - name: task_id
+        type: str
+        description: Unique identifier for the task.
+      - name: patient_context
+        type: "dict[str, Any]"
+        description: Structured patient demographics and history.
+      - name: current_draft
+        type: "Optional[str]"
+        description: The agent's most recent SOAP-note draft, if any.
+      - name: errors_so_far
+        type: "list[str]"
+        description: Accumulated error/feedback messages from prior steps.
+      - name: step_count
+        type: int
+        description: Number of steps taken in the current episode.
+
+  Action:
+    fields:
+      - name: action_type
+        type: "Literal['submit_note','request_clarify','revise_section']"
+        description: The kind of action the agent is taking.
+      - name: soap_note
+        type: "Optional[SOAPNote]"
+        description: Complete SOAP note (required for submit_note).
+      - name: section
+        type: "Optional[Literal['S','O','A','P']]"
+        description: Section to revise (required for revise_section).
+      - name: revision_text
+        type: "Optional[str]"
+        description: Replacement text for the section.
+      - name: clarify_question
+        type: "Optional[str]"
+        description: Clarification question to ask.
+
+  SOAPNote:
+    fields:
+      - name: subjective
+        type: str
+      - name: objective
+        type: str
+      - name: assessment
+        type: str
+      - name: plan
+        type: str
+
+  Reward:
+    fields:
+      - name: value
+        type: float
+        description: "Aggregate reward in [0.0, 1.0]."
+      - name: signals
+        type: "dict[str, float]"
+        description: Breakdown of individual reward sub-signals.
+      - name: done
+        type: bool
+        description: Whether the episode has ended.
+      - name: info
+        type: "dict[str, Any]"
+        description: Auxiliary metadata.
+
+  EnvironmentState:
+    fields:
+      - name: task_id
+        type: str
+      - name: step_count
+        type: int
+      - name: max_steps
+        type: int
+      - name: done
+        type: bool
+      - name: current_draft
+        type: "Optional[str]"
+      - name: errors_so_far
+        type: "list[str]"
+      - name: last_reward
+        type: "Optional[Reward]"
+      - name: observation
+        type: "Optional[Observation]"
+
+# ---------------------------------------------------------------------------
+# Reward function
+# ---------------------------------------------------------------------------
+reward:
+  range: [0.0, 1.0]
+  formula: >
+    weighted_sum = grader_score × 0.60
+                 + conciseness_bonus × 0.10
+                 + safe_language_score × 0.15
+                 + format_valid × 0.15
+    deductions   = 0.05 × max(0, step_count - 3)
+                 + 0.10 × len(errors_so_far)
+    value        = clamp(weighted_sum - deductions, 0.0, 1.0)
+  signals:
+    - grader_score:        "Clinical accuracy from task-specific grader (0–1)"
+    - conciseness_bonus:   "1.0 if SOAP note ≤ 400 words, else 0.0"
+    - safe_language_score: "1.0 if no unsafe-certainty phraseology, else 0.0"
+    - format_valid:        "1.0 if all SOAP fields are non-empty strings"
+    - step_penalty:        "−0.05 per step beyond 3"
+    - error_penalty:       "−0.10 per invalid action error"
+
+# ---------------------------------------------------------------------------
+# Graders
+# ---------------------------------------------------------------------------
+graders:
+  - name: grade_easy
+    file: environment/tasks/task_easy.py
+    function: grade_easy
+
+  - name: grade_medium
+    file: environment/tasks/task_medium.py
+    function: grade_medium
+
+  - name: grade_hard
+    file: environment/tasks/task_hard.py
+    function: grade_hard
+
+# ---------------------------------------------------------------------------
+# Inference
+# ---------------------------------------------------------------------------
+inference:
+  script: inference.py
+  env_vars:
+    - OPENAI_API_KEY
+    - API_BASE_URL
+    - MODEL_NAME

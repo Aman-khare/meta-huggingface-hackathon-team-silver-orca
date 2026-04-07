@@ -1,0 +1,67 @@
+TRIAGE NURSE: 72-year-old female, Maria Garcia, presenting with acute onset chest pain and shortness of breath. Pain started approximately ninety minutes ago. She's on warfarin. Vitals on arrival: BP 168 over 94, heart rate 112 and irregular, respiratory rate 22, SpO2 91 percent on room air, temp 37.2. She's being moved to Bed 4 in the acute bay.
+
+DR. OKONKWO: Mrs. Garcia, I'm Dr. Okonkwo. I can see you're in some distress. Can you tell me about the pain you're feeling?
+
+MARIA GARCIA: It's — it's right here in the center of my chest. It feels like a heavy pressure, like someone's sitting on me. And I can't catch my breath. It started when I was watching television, I wasn't doing anything strenuous.
+
+DR. OKONKWO: On a scale of zero to ten, how severe is the pain right now?
+
+MARIA GARCIA: Maybe a seven. It was worse when it started, maybe an eight or nine.
+
+DR. OKONKWO: Does the pain go anywhere — into your arm, your jaw, your back?
+
+MARIA GARCIA: A little into my left arm. Not my jaw. Maybe a tiny bit in my back between my shoulder blades.
+
+DR. OKONKWO: Okay. Any nausea, vomiting, or dizziness?
+
+MARIA GARCIA: I felt nauseous in the ambulance, but I didn't throw up. A little lightheaded, yes.
+
+DR. OKONKWO: Have you had chest pain like this before?
+
+MARIA GARCIA: I had a similar episode about two years ago and they said it was angina. They gave me nitroglycerin and it went away. But this feels different — stronger, and the breathing is worse this time.
+
+DR. OKONKWO: I see from your chart you have coronary artery disease, atrial fibrillation, and chronic kidney disease stage 3. You're on warfarin, metoprolol, aspirin, furosemide, and amlodipine. Have you taken all your medications today?
+
+MARIA GARCIA: Yes, I took everything this morning like I always do.
+
+DR. OKONKWO: Any recent travel — long car rides, flights?
+
+MARIA GARCIA: No, no travel. I've been — actually, wait. My daughter drove me to Sacramento last weekend. It was about a five-hour drive each way and I was mostly sitting in the car.
+
+DR. OKONKWO: That's important. Any leg swelling, redness, or calf pain since that trip?
+
+MARIA GARCIA: Now that you mention it, my left calf has been a little sore. I thought it was just from sitting so long. It's not swollen though — I don't think. Maybe a little.
+
+DR. OKONKWO: Let me examine you. — Chest auscultation: irregular rhythm, no murmurs or gallops appreciated. Diminished breath sounds at the right base with fine crackles. Abdomen soft, non-tender. Left calf is mildly tender to palpation with trace edema compared to the right. No erythema. JVP appears mildly elevated.
+
+DR. OKONKWO [to resident]: Alright, we need to move quickly. Differential here is broad — I'm most concerned about acute coronary syndrome versus pulmonary embolism, given the acute onset, the recent prolonged immobilization from the car trip, the calf tenderness, and the hypoxia. The atrial fib and CKD complicate both the workup and management. Let's get a 12-lead ECG stat, troponin I — I see the initial was 0.08 so borderline — CBC, BMP, coags with INR, BNP, and a D-dimer. Start her on two liters nasal cannula and let's get the SpO2 up. Do NOT give heparin yet — she's already on warfarin and her INR was 2.6 on arrival, so she's anticoagulated. Hold off on nitroglycerin too until we see the ECG — I want to rule out a right ventricular infarct first.
+
+RESIDENT DR. CHEN: Got it. ECG is printing now. — ECG shows atrial fibrillation with rapid ventricular response at 114, ST-segment depression in leads V4 through V6, no ST elevation. No right-sided changes.
+
+DR. OKONKWO: Okay, no STEMI and no RV involvement. The ST depression could be demand ischemia from the tachycardia, or it could be an NSTEMI. With the borderline troponin, I want a repeat troponin in three hours for delta. Go ahead and give sublingual nitro now — 0.4 milligrams — and let's see if the chest pain responds.
+
+MARIA GARCIA: Doctor, I should mention — I took one of my old nitroglycerin tablets at home before calling 911. It didn't help much.
+
+DR. OKONKWO: Wait — earlier you said the pain started while you were watching TV and you came straight in. Did you take nitroglycerin at home before the ambulance arrived?
+
+MARIA GARCIA: Yes, sorry. I'm a little confused with everything happening. I did take one at home. It took the edge off for maybe five minutes and then the pain came right back.
+
+DR. OKONKWO: Okay, that's very important information. A partial, transient response to nitro. Let's still give another dose here under monitoring. — And let's get that D-dimer. With the prolonged immobilization and calf tenderness, PE is still on my differential. However, given the CKD with eGFR of 34 and the contrast dye allergy, a CT-PA is going to be problematic. We'll need to consider a V/Q scan instead if the D-dimer comes back elevated.
+
+RESIDENT DR. CHEN: D-dimer result just came in — it's 1,840 nanograms per milliliter. Significantly elevated.
+
+DR. OKONKWO: That's four times the upper limit of normal. In a 72-year-old post-immobilization patient with hypoxia and calf tenderness, that's very concerning for PE. Let's order a V/Q scan — nuclear medicine should be able to do it within the hour. Also, I want a bilateral lower-extremity venous duplex to evaluate for DVT in that left leg.
+
+DR. OKONKWO: Mrs. Garcia, we're running some additional tests. The nitro — has it helped the chest pressure at all?
+
+MARIA GARCIA: A little bit, maybe down to a five now. But I still can't breathe well.
+
+DR. OKONKWO: We're going to increase your oxygen to four liters. — Chen, let's also give a one-time dose of IV metoprolol, 5 milligrams, to try to rate-control the afib. Her heart rate is driving up oxygen demand. Check potassium first — with the CKD and furosemide I want to make sure we're not hypokalemic before we push a beta-blocker.
+
+RESIDENT DR. CHEN: Potassium is 4.1, within normal limits. BNP is 450, creatinine 1.9 consistent with her baseline CKD. Hemoglobin 10.2. Pushing the metoprolol now.
+
+DR. OKONKWO: Good. So to frame this for the chart: we're working up a dual-pathway differential — ACS, specifically NSTEMI, being evaluated with serial troponins and cardiology consult, and concurrent PE workup with V/Q scan and lower extremity duplex given the strong Wells score. The contrast allergy and CKD preclude CT-PA. She's therapeutically anticoagulated on warfarin with INR 2.6 so we're not adding heparin. Rate-controlling the afib with IV metoprolol. Monitoring on continuous telemetry. Admit to Cardiac ICU for observation pending results. — Mrs. Garcia, we're going to keep you here tonight while we sort this out. The team upstairs in the ICU is going to take excellent care of you.
+
+MARIA GARCIA: Thank you, Doctor. I'm scared but I trust you all.
+
+DR. OKONKWO: You're in the right place. We're going to figure out exactly what's going on and take care of it.
