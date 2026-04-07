@@ -1,0 +1,9 @@
+[START] task=easy_routine_checkup env=clinical-note-scribe model=gpt-4o-mini
+[STEP] step=1 action=submit_note(fallback) reward=0.70 done=true error=Error code: 401 - {'error': 'Invalid username or password.'}
+[END] success=true steps=1 score=0.70 rewards=0.70
+[START] task=medium_chronic_disease_followup env=clinical-note-scribe model=gpt-4o-mini
+[STEP] step=1 action=submit_note(fallback) reward=0.70 done=true error=Error code: 401 - {'error': 'Invalid username or password.'}
+[END] success=true steps=1 score=0.70 rewards=0.70
+[START] task=hard_complex_er_visit env=clinical-note-scribe model=gpt-4o-mini
+[STEP] step=1 action=submit_note(fallback) reward=0.70 done=true error=Error code: 401 - {'error': 'Invalid username or password.'}
+[END] success=true steps=1 score=0.70 rewards=0.70

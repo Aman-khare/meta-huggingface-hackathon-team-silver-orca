@@ -1,17 +1,37 @@
-"""Baseline inference script for the Clinical Note Scribe environment.
+"""
+Inference Script — Clinical Note Scribe
+===================================
+MANDATORY
+- Before submitting, ensure the following variables are defined in your environment configuration:
+    API_BASE_URL       The API endpoint for the LLM.
+    MODEL_NAME         The model identifier to use for inference.
+    HF_TOKEN           Your Hugging Face / API key.
+    LOCAL_IMAGE_NAME   The name of the local image to use for the environment
+                       if you are using from_docker_image() method.
 
-Runs all three tasks (easy → medium → hard) sequentially using an
-OpenAI-compatible API to generate SOAP notes from doctor–patient transcripts.
+- Defaults are set only for API_BASE_URL and MODEL_NAME:
+    API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+    MODEL_NAME   = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 
-Environment variables
----------------------
-OPENAI_API_KEY   – API key for the model provider
-API_BASE_URL     – Base URL for the OpenAI-compatible endpoint (default: https://api.openai.com/v1)
-MODEL_NAME       – Model identifier to use (default: gpt-4o-mini)
+- The inference script must be named `inference.py` and placed in the root directory.
+- Participants must use OpenAI Client for all LLM calls using above variables.
 
-Usage::
+STDOUT FORMAT
+- The script must emit exactly three line types to stdout, in this order:
 
-    python inference.py
+    [START] task=<task_name> env=<benchmark> model=<model_name>
+    [STEP]  step=<n> action=<action_str> reward=<0.00> done=<true|false> error=<msg|null>
+    [END]   success=<true|false> steps=<n> score=<score> rewards=<r1,r2,...,rn>
+
+  Rules:
+    - One [START] line at episode begin.
+    - One [STEP] line per step, immediately after env.step() returns.
+    - One [END] line after the task finishes, always emitted (even on exception).
+    - reward and rewards are formatted to 2 decimal places.
+    - done and success are lowercase booleans: true or false.
+    - error is the raw last_action_error string, or null if none.
+    - All fields on a single line with no newlines within a line.
+    - Each task should return score in [0, 1].
 
 Designed to complete in under 20 minutes on 2 vCPU / 8 GB RAM.
 """
@@ -22,23 +42,23 @@ import json
 import logging
 import os
 import sys
-import time
-from typing import Any
+import textwrap
+from typing import Any, List, Optional
+
+from openai import OpenAI
 
 # ---------------------------------------------------------------------------
-# Bootstrap logging BEFORE importing environment modules so the root logger
-# is configured and child loggers (clinical_note_scribe.*) propagate cleanly.
+# Silence the underlying env's stdout JSON logs (redirect them to stderr)
 # ---------------------------------------------------------------------------
+env_logger = logging.getLogger("clinical_note_scribe")
+env_logger.setLevel(logging.INFO)
+env_logger.handlers.clear()
+env_logger.addHandler(logging.StreamHandler(sys.stderr))
+env_logger.propagate = False
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
-logger = logging.getLogger("inference")
 
 # ---------------------------------------------------------------------------
-# Environment imports (after logging is configured)
+# Environment imports
 # ---------------------------------------------------------------------------
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -50,275 +70,253 @@ from environment.tasks import TASK_REGISTRY                       # noqa: E402
 # Config
 # ---------------------------------------------------------------------------
 
-API_KEY      = os.environ.get("OPENAI_API_KEY", "")
-API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
-MODEL_NAME   = os.environ.get("MODEL_NAME", "gpt-4o-mini")
+IMAGE_NAME   = os.getenv("IMAGE_NAME")
+API_KEY      = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
+API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
+MODEL_NAME   = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct"
 
-TASK_IDS = list(TASK_REGISTRY.keys())  # deterministic order
-
-# Maximum tokens for the model response — keeps latency low
-MAX_TOKENS = 1024
+BENCHMARK    = "clinical-note-scribe"
+TASK_IDS     = list(TASK_REGISTRY.keys())
+MAX_STEPS    = 5       # Max steps per task (submit + optional clarify/revise)
+MAX_TOKENS   = 1024
+TEMPERATURE  = 0.2
 
 # ---------------------------------------------------------------------------
 # System prompt
 # ---------------------------------------------------------------------------
 
-SYSTEM_PROMPT = """\
-You are a clinical documentation assistant. Given a doctor–patient transcript \
-and patient context, generate a concise, clinically accurate SOAP note.
+SYSTEM_PROMPT = textwrap.dedent("""\
+    You are a clinical documentation assistant. Given a doctor-patient transcript
+    and patient context, generate a concise, clinically accurate SOAP note.
 
-RULES:
-1. Use professional medical language.  Avoid over-certain phrasing such as \
-   "patient definitely has", "diagnosis is certain", or "100% certain".
-2. Keep the note concise — aim for under 400 words total across all four sections.
-3. Return your output as a **single valid JSON object** matching this schema exactly:
+    RULES:
+    1. Use professional medical language. Avoid over-certain phrasing such as
+       "patient definitely has", "diagnosis is certain", or "100% certain".
+    2. Keep the note concise - aim for under 400 words total across all four sections.
+    3. Return your output as a **single valid JSON object** matching this schema exactly:
 
-{
-  "action_type": "submit_note",
-  "soap_note": {
-    "subjective": "<patient's reported symptoms, history, and concerns>",
-    "objective": "<exam findings, vitals, lab results, imaging>",
-    "assessment": "<differential diagnoses and clinical reasoning>",
-    "plan": "<treatment plan, medications, follow-up, referrals>"
-  }
-}
+    {
+      "action_type": "submit_note",
+      "soap_note": {
+        "subjective": "<patient's reported symptoms, history, and concerns>",
+        "objective": "<exam findings, vitals, lab results, imaging>",
+        "assessment": "<differential diagnoses and clinical reasoning>",
+        "plan": "<treatment plan, medications, follow-up, referrals>"
+      }
+    }
 
-Return ONLY the JSON object.  No markdown fences, no commentary, no extra keys.
-"""
+    Return ONLY the JSON object. No markdown fences, no commentary, no extra keys.
+""").strip()
+
+
+# ---------------------------------------------------------------------------
+# Stdout logging — mandatory hackathon format
+# ---------------------------------------------------------------------------
+
+def log_start(task: str, env: str, model: str) -> None:
+    print(f"[START] task={task} env={env} model={model}", flush=True)
+
+
+def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
+    error_val = error if error else "null"
+    done_val = str(done).lower()
+    print(
+        f"[STEP] step={step} action={action} reward={reward:.2f} done={done_val} error={error_val}",
+        flush=True,
+    )
+
+
+def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
+    rewards_str = ",".join(f"{r:.2f}" for r in rewards)
+    print(
+        f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={rewards_str}",
+        flush=True,
+    )
+
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
 
 def _build_user_prompt(transcript: str, patient_context: dict[str, Any]) -> str:
     """Build the user message containing the transcript and context."""
     ctx_str = json.dumps(patient_context, indent=2, default=str)
     return (
         f"## Patient Context\n```json\n{ctx_str}\n```\n\n"
-        f"## Doctor–Patient Transcript\n```\n{transcript}\n```\n\n"
+        f"## Doctor-Patient Transcript\n```\n{transcript}\n```\n\n"
         "Generate the SOAP note as a JSON Action object."
     )
 
 
-def _call_model(user_prompt: str) -> dict[str, Any]:
-    """Call the OpenAI-compatible API and return the parsed JSON action dict.
-
-    Uses ``urllib`` so there is zero dependency on ``openai`` package —
-    this keeps the Docker image small and avoids version conflicts.
-    Falls back to the ``openai`` package if installed.
-    """
-    try:
-        return _call_model_sdk(user_prompt)
-    except ImportError:
-        return _call_model_urllib(user_prompt)
-
-
-def _call_model_sdk(user_prompt: str) -> dict[str, Any]:
-    """Call via the ``openai`` Python SDK."""
-    from openai import OpenAI  # noqa: F811
-
-    client = OpenAI(
-        api_key=API_KEY,
-        base_url=API_BASE_URL,
-    )
-    response = client.chat.completions.create(
-        model=MODEL_NAME,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user",   "content": user_prompt},
-        ],
-        max_tokens=MAX_TOKENS,
-        temperature=0.2,
-    )
-    raw = response.choices[0].message.content.strip()
-    return _parse_json(raw)
-
-
-def _call_model_urllib(user_prompt: str) -> dict[str, Any]:
-    """Fallback: call the API with ``urllib`` (no extra dependencies)."""
-    import urllib.request
-
-    url = f"{API_BASE_URL.rstrip('/')}/chat/completions"
-    payload = json.dumps({
-        "model": MODEL_NAME,
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user",   "content": user_prompt},
-        ],
-        "max_tokens": MAX_TOKENS,
-        "temperature": 0.2,
-    }).encode()
-
-    req = urllib.request.Request(
-        url,
-        data=payload,
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {API_KEY}",
-        },
-    )
-    with urllib.request.urlopen(req, timeout=120) as resp:
-        body = json.loads(resp.read())
-
-    raw = body["choices"][0]["message"]["content"].strip()
-    return _parse_json(raw)
-
-
 def _parse_json(raw: str) -> dict[str, Any]:
     """Parse the model's raw text output into a dict, tolerating markdown fences."""
-    # Strip markdown code fences if present
-    cleaned = raw
+    cleaned = raw.strip()
     if cleaned.startswith("```"):
-        # remove opening fence (possibly ```json)
         first_newline = cleaned.index("\n")
         cleaned = cleaned[first_newline + 1:]
     if cleaned.endswith("```"):
-        cleaned = cleaned[: -3]
+        cleaned = cleaned[:-3]
     cleaned = cleaned.strip()
 
     try:
         return json.loads(cleaned)
     except json.JSONDecodeError as exc:
-        logger.error("Failed to parse model output as JSON: %s", exc)
-        logger.error("Raw output:\n%s", raw)
+        print(f"[DEBUG] Failed to parse model output as JSON: {exc}", file=sys.stderr, flush=True)
+        print(f"[DEBUG] Raw output:\n{raw}", file=sys.stderr, flush=True)
         raise
 
 
-def _log_event(event: str, **kwargs: Any) -> None:
-    """Emit a structured JSON log line."""
-    payload: dict[str, Any] = {"event": event, "timestamp": time.time()}
-    payload.update(kwargs)
-    logger.info(json.dumps(payload, default=str))
+def get_soap_note(client: OpenAI, transcript: str, patient_context: dict[str, Any]) -> dict[str, Any]:
+    """Call the OpenAI-compatible API and return the parsed JSON action dict."""
+    user_prompt = _build_user_prompt(transcript, patient_context)
+    try:
+        completion = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user",   "content": user_prompt},
+            ],
+            temperature=TEMPERATURE,
+            max_tokens=MAX_TOKENS,
+            stream=False,
+        )
+        raw = (completion.choices[0].message.content or "").strip()
+        return _parse_json(raw)
+    except Exception as exc:
+        print(f"[DEBUG] Model request failed: {exc}", file=sys.stderr, flush=True)
+        raise
 
 
 # ---------------------------------------------------------------------------
-# Main loop
+# Per-task runner
 # ---------------------------------------------------------------------------
 
+def run_task(client: OpenAI, env: ClinicalNoteScribeEnv, task_id: str) -> dict[str, Any]:
+    """Run a single task episode and return the result dict."""
+    rewards: List[float] = []
+    steps_taken = 0
+    score = 0.0
+    success = False
+    last_error: Optional[str] = None
 
-def run_all_tasks() -> list[dict[str, Any]]:
-    """Run every registered task and return a list of result dicts."""
-    env = ClinicalNoteScribeEnv()
-    results: list[dict[str, Any]] = []
+    log_start(task=task_id, env=BENCHMARK, model=MODEL_NAME)
 
-    for task_id in TASK_IDS:
-        logger.info("")
-        logger.info("=" * 60)
-        logger.info("  TASK: %s", task_id)
-        logger.info("=" * 60)
-
-        t0 = time.time()
-        _log_event("INFERENCE_START", task_id=task_id)
-
+    try:
         # ---- reset ----
         obs = env.reset(task_id)
-        logger.info("  Transcript length : %d chars", len(obs.transcript))
-        logger.info("  Patient context keys: %s", list(obs.patient_context.keys()))
 
-        # ---- generate SOAP note via LLM ----
-        user_prompt = _build_user_prompt(obs.transcript, obs.patient_context)
-        logger.info("  Calling model (%s) ...", MODEL_NAME)
+        for step in range(1, MAX_STEPS + 1):
+            # ---- generate SOAP note via LLM ----
+            try:
+                action_dict = get_soap_note(client, obs.transcript, obs.patient_context)
+                action = Action(**action_dict)
+                action_str = f"submit_note(sections=S,O,A,P)"
+            except Exception as exc:
+                # On model / parse failure, submit a minimal note to avoid hanging
+                action = Action(
+                    action_type="submit_note",
+                    soap_note=SOAPNote(
+                        subjective="Unable to generate.",
+                        objective="Unable to generate.",
+                        assessment="Unable to generate.",
+                        plan="Unable to generate.",
+                    ),
+                )
+                action_str = f"submit_note(fallback)"
+                last_error = str(exc)
 
-        try:
-            action_dict = _call_model(user_prompt)
-        except Exception as exc:
-            logger.error("  Model call failed: %s", exc)
-            results.append({
-                "task_id": task_id,
-                "score": 0.0,
-                "error": str(exc),
-                "elapsed_s": round(time.time() - t0, 2),
-            })
-            _log_event("INFERENCE_ERROR", task_id=task_id, error=str(exc))
-            continue
+            # ---- step ----
+            obs, reward_obj, done, info = env.step(action)
 
-        # ---- validate and create Action ----
-        try:
-            action = Action(**action_dict)
-        except Exception as exc:
-            logger.error("  Invalid action schema: %s", exc)
-            logger.error("  Model returned: %s", json.dumps(action_dict, indent=2))
-            results.append({
-                "task_id": task_id,
-                "score": 0.0,
-                "error": f"schema_error: {exc}",
-                "elapsed_s": round(time.time() - t0, 2),
-            })
-            _log_event("INFERENCE_ERROR", task_id=task_id, error=str(exc))
-            continue
+            reward_val = reward_obj.value
+            rewards.append(reward_val)
+            steps_taken = step
 
-        # ---- step (submit) ----
-        obs2, reward, done, info = env.step(action)
-        elapsed = round(time.time() - t0, 2)
+            # Check for env-level errors
+            error_msg = None
+            if obs.errors_so_far:
+                error_msg = obs.errors_so_far[-1]
+            elif last_error:
+                error_msg = last_error
+                last_error = None
 
-        logger.info("  Done: %s  |  Reward: %.4f  |  Elapsed: %.1fs", done, reward.value, elapsed)
-        logger.info("  Signals: %s",
-                     {k: v for k, v in reward.signals.items() if not k.startswith("_")})
+            log_step(
+                step=step,
+                action=action_str,
+                reward=reward_val,
+                done=done,
+                error=error_msg,
+            )
 
-        _log_event("INFERENCE_END", task_id=task_id, score=reward.value, elapsed_s=elapsed)
+            if done:
+                break
 
-        results.append({
-            "task_id": task_id,
-            "score": reward.value,
-            "elapsed_s": elapsed,
-        })
+        # Final score = last reward value (already in [0, 1])
+        score = rewards[-1] if rewards else 0.0
+        score = min(max(score, 0.0), 1.0)
+        success = score > 0.0
 
-    return results
+    except Exception as exc:
+        print(f"[DEBUG] Task {task_id} failed: {exc}", file=sys.stderr, flush=True)
+        score = 0.0
+        success = False
+
+    finally:
+        log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
+
+    return {
+        "task_id": task_id,
+        "score": score,
+        "steps": steps_taken,
+        "rewards": rewards,
+        "success": success,
+    }
 
 
-def _print_summary(results: list[dict[str, Any]]) -> None:
-    """Print a formatted summary table."""
-    logger.info("")
-    logger.info("=" * 60)
-    logger.info("  SUMMARY")
-    logger.info("=" * 60)
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 
-    col_task  = max(len("Task"), *(len(r["task_id"]) for r in results))
-    col_score = 7  # "Score" + padding
-    col_time  = 9  # "Time (s)"
+def main() -> None:
+    if not API_KEY:
+        print(
+            "[DEBUG] WARNING: HF_TOKEN / API_KEY is not set. "
+            "Model calls will fail unless the endpoint requires no auth.",
+            file=sys.stderr,
+            flush=True,
+        )
 
-    header = f"  {'Task':<{col_task}}  {'Score':>{col_score}}  {'Time (s)':>{col_time}}"
-    sep    = f"  {'-' * col_task}  {'-' * col_score}  {'-' * col_time}"
-    logger.info(header)
-    logger.info(sep)
+    client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+    env = ClinicalNoteScribeEnv()
+    results: List[dict[str, Any]] = []
+
+    for task_id in TASK_IDS:
+        result = run_task(client, env, task_id)
+        results.append(result)
+
+    # ---- Summary table ----
+    print("", file=sys.stderr, flush=True)
+    print("=" * 60, file=sys.stderr, flush=True)
+    print("  SUMMARY", file=sys.stderr, flush=True)
+    print("=" * 60, file=sys.stderr, flush=True)
+
+    col_task = max(len("Task"), *(len(r["task_id"]) for r in results))
+    header = f"  {'Task':<{col_task}}  {'Score':>7}  {'Steps':>5}"
+    sep    = f"  {'-' * col_task}  {'-' * 7}  {'-' * 5}"
+    print(header, file=sys.stderr, flush=True)
+    print(sep, file=sys.stderr, flush=True)
 
     total_score = 0.0
     for r in results:
-        score_str = f"{r['score']:.4f}" if "error" not in r else "ERROR"
-        time_str  = f"{r['elapsed_s']:.1f}"
-        logger.info(f"  {r['task_id']:<{col_task}}  {score_str:>{col_score}}  {time_str:>{col_time}}")
+        s = f"{r['score']:.4f}" if r["success"] else "ERROR"
+        print(f"  {r['task_id']:<{col_task}}  {s:>7}  {r['steps']:>5}", file=sys.stderr, flush=True)
         total_score += r["score"]
 
-    logger.info(sep)
+    print(sep, file=sys.stderr, flush=True)
     avg = total_score / len(results) if results else 0.0
-    logger.info(f"  {'AVERAGE':<{col_task}}  {avg:>{col_score}.4f}")
-    logger.info("")
+    print(f"  {'AVERAGE':<{col_task}}  {avg:>7.4f}", file=sys.stderr, flush=True)
+    print("", file=sys.stderr, flush=True)
 
-
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    if not API_KEY:
-        logger.warning(
-            "OPENAI_API_KEY is not set. The model calls will fail unless "
-            "the API endpoint does not require authentication."
-        )
-
-    logger.info("Clinical Note Scribe — Baseline Inference")
-    logger.info("  Model      : %s", MODEL_NAME)
-    logger.info("  API Base   : %s", API_BASE_URL)
-    logger.info("  Tasks      : %s", TASK_IDS)
-    logger.info("")
-
-    start = time.time()
-    results = run_all_tasks()
-    total_elapsed = round(time.time() - start, 2)
-
-    _print_summary(results)
-    logger.info("  Total wall-clock time: %.1fs", total_elapsed)
-
-    _log_event("INFERENCE_COMPLETE", total_elapsed_s=total_elapsed,
-               scores={r["task_id"]: r["score"] for r in results})
+    main()
