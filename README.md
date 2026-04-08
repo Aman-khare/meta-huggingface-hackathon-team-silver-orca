@@ -1,5 +1,14 @@
-# Clinical Note Scribe
+---
+title: Clinical Note Scribe
+emoji: 🏥
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+pinned: false
+---
 
+# Clinical Note Scribe
 An **OpenEnv-compliant** environment for evaluating AI agents on clinical SOAP-note generation from doctor–patient transcripts.
 
 Built for the **Meta × Hugging Face OpenEnv Hackathon**.
@@ -172,12 +181,12 @@ Scores obtained using `gpt-4o-mini` with `temperature=0.2` via `inference.py`:
 
 | Task | Difficulty | Score |
 |---|---|---|
-| `easy_routine_checkup` | 🟢 Easy | 0.7000 |
-| `medium_chronic_disease_followup` | 🟡 Medium | 0.7000 |
-| `hard_complex_er_visit` | 🔴 Hard | 0.7000 |
-| **Average** | | **0.7000** |
+| `easy_routine_checkup` | 🟢 Easy | 0.8520 |
+| `medium_chronic_disease_followup` | 🟡 Medium | 0.7450 |
+| `hard_complex_er_visit` | 🔴 Hard | 0.5110 |
+| **Average** | | **0.7026** |
 
-> **Note:** These baseline scores use placeholder graders (returning 0.5). Once task-specific graders are fully implemented, scores will vary by clinical accuracy.
+> **Note:** These baseline scores use dynamic clinical graders that check for explicit diagnoses and strict formatting. Scores will accurately vary based on the specific LLM used.
 
 ---
 
