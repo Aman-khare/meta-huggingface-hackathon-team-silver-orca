@@ -169,7 +169,7 @@ def compute_reward(
     raw = weighted - step_penalty - error_penalty
 
     # ---- clamp ----
-    value = max(0.0, min(1.0, raw))
+    value = max(0.01, min(0.99, raw))
 
     signals: dict[str, float] = {
         # positive contributions

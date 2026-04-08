@@ -91,8 +91,8 @@ def grade_medium(soap_note: SOAPNote, task: dict[str, Any]) -> dict[str, float]:
         p_score += 0.5
 
     return {
-        "subjective_accuracy": min(s_score, 1.0),
-        "objective_accuracy": min(o_score, 1.0),
-        "assessment_accuracy": min(a_score, 1.0),
-        "plan_accuracy": min(p_score, 1.0),
+        "subjective_accuracy": max(0.01, min(s_score, 0.99)),
+        "objective_accuracy": max(0.01, min(o_score, 0.99)),
+        "assessment_accuracy": max(0.01, min(a_score, 0.99)),
+        "plan_accuracy": max(0.01, min(p_score, 0.99)),
     }
