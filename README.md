@@ -87,38 +87,73 @@ value = clamp(weighted_sum − deductions, 0.0, 1.0)
 
 ---
 
-## Setup Instructions
+## Installation
 
 ### Prerequisites
 
 - Python 3.11+
 - An OpenAI-compatible API key (set as `OPENAI_API_KEY`)
 
-### Local Development
+### Local Setup
 
 ```bash
 # Clone the repository
 git clone https://github.com/<your-org>/meta-huggingface-hackathon-team-silver-orca.git
 cd meta-huggingface-hackathon-team-silver-orca
 
+# Create a virtual environment (optional but recommended)
+python -m venv venv
+# On Linux/macOS:
+source venv/bin/activate
+# On Windows:
+# venv\Scripts\activate
+
 # Install dependencies
 pip install -r requirements.txt
+```
 
-# Start the environment server
+### Docker Setup
+
+```bash
+docker build -t meta-huggingface-hackathon-team-silver-orca .
+```
+
+---
+
+## Usage
+
+### 1. Start the Environment Server
+
+The environment runs as a REST API. Start the server first before running the agent.
+
+#### Using Python
+```bash
 uvicorn server.app:app --host 0.0.0.0 --port 7860
+```
 
-# In another terminal — run the baseline inference
+#### Using Docker
+```bash
+docker run -p 7860:7860 meta-huggingface-hackathon-team-silver-orca
+```
+
+### 2. Run the Agent (Inference)
+
+In another terminal, run the baseline inference script which will interact with the running environment:
+
+**On Linux/macOS:**
+```bash
 export OPENAI_API_KEY="sk-..."
 export MODEL_NAME="gpt-4o-mini"           # or any OpenAI-compatible model
 export API_BASE_URL="https://api.openai.com/v1"
 python inference.py
 ```
 
-### Docker
-
-```bash
-docker build -t meta-huggingface-hackathon-team-silver-orca .
-docker run -p 7860:7860 meta-huggingface-hackathon-team-silver-orca
+**On Windows (PowerShell):**
+```powershell
+$env:OPENAI_API_KEY="sk-..."
+$env:MODEL_NAME="gpt-4o-mini"
+$env:API_BASE_URL="https://api.openai.com/v1"
+python inference.py
 ```
 
 ### API Endpoints
@@ -129,7 +164,6 @@ docker run -p 7860:7860 meta-huggingface-hackathon-team-silver-orca
 | `POST` | `/reset` | Start a new episode → `Observation` |
 | `POST` | `/step` | Submit an action → `{observation, reward, done, info}` |
 | `GET` | `/state` | Inspect environment state → `EnvironmentState` |
-
 ---
 
 ## Baseline Scores
