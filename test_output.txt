@@ -1,9 +1,0 @@
-﻿
---- Sub-signal unit tests ---
-  [OK] conciseness(short): got=1.0  want=1.0
-  [OK] conciseness(long) : got=0.0  want=0.0
-  [OK] safe_lang(clean)  : got=1.0  want=1.0
-  [OK] safe_lang(unsafe) : got=0.0  want=0.0
-  [OK] format_valid(ok)  : got=1.0  want=1.0
-  [OK] format_valid(bad) : got=0.0  want=0.0
-  [OK] format_valid(clfy): got=1.0  want=1.0

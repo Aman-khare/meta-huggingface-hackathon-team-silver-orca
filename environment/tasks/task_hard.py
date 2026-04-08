@@ -1,6 +1,8 @@
 """Hard task — complex ER visit.
 
-Grader is intentionally left unimplemented.
+Grader uses keyword-based clinical rubric scoring to evaluate the SOAP note
+against expected findings from a complex ER visit with overlapping chest pain,
+SOB, and a possible PE complicated by a contrast dye allergy.
 """
 
 from __future__ import annotations
@@ -61,26 +63,56 @@ HARD_TASK: dict[str, Any] = {
 
 
 # ---------------------------------------------------------------------------
-# Grader (not yet implemented)
+# Grader
 # ---------------------------------------------------------------------------
 
 def grade_hard(soap_note: SOAPNote, task: dict[str, Any]) -> dict[str, float]:
     """Score a submitted SOAP note against the hard-task rubric.
 
-    Parameters
-    ----------
-    soap_note:
-        The agent's submitted clinical note.
-    task:
-        The task definition dict (``HARD_TASK``).
+    Checks for chest pain / SOB and the nitroglycerin contradiction (subjective),
+    D-dimer and contrast allergy (objective), ACS vs PE differential (assessment),
+    and V/Q scan + ICU admission (plan).
 
     Returns
     -------
-    dict mapping signal names → float scores in [0, 1].
-
-    Raises
-    ------
-    NotImplementedError
-        Grader has not been implemented yet.
+    dict mapping signal names to float scores in [0, 1].
     """
-    raise NotImplementedError("Hard-task grader is not yet implemented.")
+    text_s = soap_note.subjective.lower()
+    text_o = soap_note.objective.lower()
+    text_a = soap_note.assessment.lower()
+    text_p = soap_note.plan.lower()
+
+    # 1. Subjective — catching the contradiction and presenting complaints
+    s_score = 0.0
+    if "chest pain" in text_s or "shortness of breath" in text_s or "sob" in text_s:
+        s_score += 0.5
+    if "nitroglycerin" in text_s or "contradict" in text_s or "denied" in text_s:
+        s_score += 0.5
+
+    # 2. Objective — elevated D-dimer and allergy awareness
+    o_score = 0.0
+    if "d-dimer" in text_o or "1840" in text_o or "d dimer" in text_o:
+        o_score += 0.5
+    if "allergy" in text_o or "contrast" in text_o or "troponin" in text_o:
+        o_score += 0.5
+
+    # 3. Assessment — the dual differential (ACS vs PE)
+    a_score = 0.0
+    if "acs" in text_a or "acute coronary" in text_a or "coronary" in text_a or "ischemia" in text_a:
+        a_score += 0.5
+    if "pe" in text_a or "pulmonary embolism" in text_a or "embolism" in text_a:
+        a_score += 0.5
+
+    # 4. Plan — adapting to the allergy (V/Q scan) and admission
+    p_score = 0.0
+    if "v/q" in text_p or "ventilation" in text_p or "perfusion" in text_p:
+        p_score += 0.5
+    if "icu" in text_p or "admit" in text_p or "cardiac" in text_p:
+        p_score += 0.5
+
+    return {
+        "subjective_accuracy": min(s_score, 1.0),
+        "objective_accuracy": min(o_score, 1.0),
+        "assessment_accuracy": min(a_score, 1.0),
+        "plan_accuracy": min(p_score, 1.0),
+    }

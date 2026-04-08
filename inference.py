@@ -212,17 +212,18 @@ def run_task(client: OpenAI, env: ClinicalNoteScribeEnv, task_id: str) -> dict[s
                 action = Action(**action_dict)
                 action_str = f"submit_note(sections=S,O,A,P)"
             except Exception as exc:
-                # On model / parse failure, submit a minimal note to avoid hanging
+                # On model / parse failure, submit an empty note so all sub-signals
+                # grade to 0.0 (format_valid=0 because fields are empty, grader=0).
                 action = Action(
                     action_type="submit_note",
                     soap_note=SOAPNote(
-                        subjective="Unable to generate.",
-                        objective="Unable to generate.",
-                        assessment="Unable to generate.",
-                        plan="Unable to generate.",
+                        subjective="",
+                        objective="",
+                        assessment="",
+                        plan="",
                     ),
                 )
-                action_str = f"submit_note(fallback)"
+                action_str = "submit_note(fallback)"
                 last_error = str(exc)
 
             # ---- step ----

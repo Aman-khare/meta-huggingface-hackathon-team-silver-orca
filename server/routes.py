@@ -110,12 +110,39 @@ async def reset(body: ResetRequest) -> Observation:
     response_model=StepResponse,
     summary="Submit an action and advance the environment by one step",
 )
-async def step(action: Action) -> StepResponse:
-    """Execute *action* in the current episode.
+async def step(payload: dict[str, Any]) -> StepResponse:
+    """Execute an action in the current episode.
 
-    The underlying environment emits a ``[STEP]`` log event (and ``[END]``
-    when the episode terminates).
+    Accepts a raw JSON body and validates it into an ``Action``.
+    If validation fails, the error is recorded in the environment
+    instead of returning an HTTP 422.
     """
+    from pydantic import ValidationError
+    from environment.models import Reward
+
+    try:
+        action = Action(**payload)
+    except (ValidationError, TypeError) as exc:
+        # Gracefully absorb bad payloads instead of crashing with HTTP 422
+        _log("STEP", endpoint="/step", action_type="invalid", error=str(exc))
+        error_msg = f"Invalid action payload: {exc}"
+        _env._errors_so_far.append(error_msg)
+        _env._step_count += 1
+
+        obs = _env._build_observation()
+        reward = Reward(
+            value=0.0,
+            signals={"error": 1.0},
+            done=False,
+            info={"error": error_msg},
+        )
+        return StepResponse(
+            observation=obs,
+            reward=reward,
+            done=False,
+            info={"error": error_msg},
+        )
+
     _log("STEP", endpoint="/step", action_type=action.action_type)
     try:
         obs, reward, done, info = _env.step(action)

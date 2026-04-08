@@ -240,9 +240,31 @@ class ClinicalNoteScribeEnv:
     # --------------------------------------------------------------------- #
 
     def _handle_submit(self, action: Action, info: dict) -> Reward:
-        """Process a ``submit_note`` action."""
-        if action.soap_note is None:
-            error = "submit_note requires a non-null soap_note."
+        """Process a ``submit_note`` action.
+
+        If ``action.soap_note`` is provided, it is used directly.
+        Otherwise, if the agent has built up a draft via ``revise_section``,
+        the draft is parsed into a SOAPNote automatically.
+        """
+        soap = action.soap_note
+
+        # Fall back to the current draft if no explicit note is provided
+        if soap is None and self._current_draft:
+            sections: dict[str, str] = {}
+            for line in self._current_draft.split("\n"):
+                for prefix in ("S: ", "O: ", "A: ", "P: "):
+                    if line.startswith(prefix):
+                        sections[prefix[0]] = line[len(prefix):]
+            if all(k in sections for k in "SOAP"):
+                soap = SOAPNote(
+                    subjective=sections["S"],
+                    objective=sections["O"],
+                    assessment=sections["A"],
+                    plan=sections["P"],
+                )
+
+        if soap is None:
+            error = "submit_note requires a non-null soap_note (or a complete draft from revise_section)."
             self._errors_so_far.append(error)
             return compute_reward(
                 action,
@@ -253,7 +275,7 @@ class ClinicalNoteScribeEnv:
                 info={"error": error},
             )
 
-        self._current_draft = _soap_to_text(action.soap_note)
+        self._current_draft = _soap_to_text(soap)
         self._done = True
 
         # Attempt to grade via the task-specific grader
@@ -270,7 +292,7 @@ class ClinicalNoteScribeEnv:
             )
 
         try:
-            raw_signals = grader(action.soap_note, self._task)
+            raw_signals = grader(soap, self._task)
             # Grader returns a signals dict; extract a single scalar score
             # as the mean of its values for use as grader_score.
             grader_score = (
@@ -278,9 +300,9 @@ class ClinicalNoteScribeEnv:
                 if raw_signals else 0.0
             )
             info["grader_signals"] = raw_signals
-        except NotImplementedError:
-            info["warning"] = "Grader not yet implemented; returning placeholder."
-            grader_score = 0.5
+        except Exception as exc:
+            info["warning"] = f"Grader error: {exc}"
+            grader_score = 0.0
 
         return compute_reward(
             action,
@@ -297,11 +319,9 @@ class ClinicalNoteScribeEnv:
         if not question:
             error = "request_clarify requires a non-empty clarify_question."
             self._errors_so_far.append(error)
-            return compute_reward(
-                action,
-                grader_score=0.0,
-                step_count=self._step_count,
-                errors_so_far=self._errors_so_far,
+            return Reward(
+                value=0.0,
+                signals={"error": 1.0},
                 done=False,
                 info={"error": error},
             )
@@ -315,12 +335,10 @@ class ClinicalNoteScribeEnv:
                 "No additional information available for that question."
             )
 
-        # Clarification steps earn no grader_score; step_penalty accrues naturally
-        return compute_reward(
-            action,
-            grader_score=0.0,
-            step_count=self._step_count,
-            errors_so_far=self._errors_so_far,
+        # Intermediate actions get zero reward — only submit_note earns score
+        return Reward(
+            value=0.0,
+            signals={"intermediate_step": 1.0},
             done=False,
             info=info,
         )
@@ -330,11 +348,9 @@ class ClinicalNoteScribeEnv:
         if action.section is None or action.revision_text is None:
             error = "revise_section requires both 'section' and 'revision_text'."
             self._errors_so_far.append(error)
-            return compute_reward(
-                action,
-                grader_score=0.0,
-                step_count=self._step_count,
-                errors_so_far=self._errors_so_far,
+            return Reward(
+                value=0.0,
+                signals={"error": 1.0},
                 done=False,
                 info={"error": error},
             )
@@ -358,12 +374,10 @@ class ClinicalNoteScribeEnv:
 
         info["revised_section"] = action.section
 
-        # Revision steps earn no grader_score; deductions still apply
-        return compute_reward(
-            action,
-            grader_score=0.0,
-            step_count=self._step_count,
-            errors_so_far=self._errors_so_far,
+        # Intermediate actions get zero reward — only submit_note earns score
+        return Reward(
+            value=0.0,
+            signals={"intermediate_step": 1.0},
             done=False,
             info=info,
         )

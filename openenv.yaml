@@ -206,6 +206,6 @@ graders:
 inference:
   script: inference.py
   env_vars:
-    - OPENAI_API_KEY
+    - HF_TOKEN
     - API_BASE_URL
     - MODEL_NAME

@@ -1,0 +1,47 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+
+# --- IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Test artifacts ---
+out.txt
+err.txt
+test_output.txt
+test_full.py
+test_all_fixes.py
+test_inference.py
+test_reward.py
+test_presubmission.py
+
+# --- Non-submission folders ---
+next step/
+play/
+
+# --- Logs ---
+*.log
+
+# --- Secrets ---
+.env
+.env.*
