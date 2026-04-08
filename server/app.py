@@ -42,5 +42,12 @@ app = FastAPI(
     version="0.1.0",
 )
 
+from fastapi.responses import RedirectResponse
+
 # Mount all routes at root (/)
 app.include_router(router)
+
+@app.get("/", include_in_schema=False)
+async def root():
+    """Redirect to the FastAPI interactive documentation."""
+    return RedirectResponse(url="/docs")
