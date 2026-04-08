@@ -92,7 +92,7 @@ value = clamp(weighted_sum − deductions, 0.0, 1.0)
 ### Prerequisites
 
 - Python 3.11+
-- An OpenAI-compatible API key (set as `OPENAI_API_KEY`)
+- An OpenAI-compatible API key (set as `HF_TOKEN`)
 
 ### Local Setup
 
@@ -142,7 +142,7 @@ In another terminal, run the baseline inference script which will interact with 
 
 **On Linux/macOS:**
 ```bash
-export OPENAI_API_KEY="sk-..."
+export HF_TOKEN="sk-..."
 export MODEL_NAME="gpt-4o-mini"           # or any OpenAI-compatible model
 export API_BASE_URL="https://api.openai.com/v1"
 python inference.py
@@ -150,7 +150,7 @@ python inference.py
 
 **On Windows (PowerShell):**
 ```powershell
-$env:OPENAI_API_KEY="sk-..."
+$env:HF_TOKEN="sk-..."
 $env:MODEL_NAME="gpt-4o-mini"
 $env:API_BASE_URL="https://api.openai.com/v1"
 python inference.py

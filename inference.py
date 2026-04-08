@@ -70,10 +70,10 @@ from environment.tasks import TASK_REGISTRY                       # noqa: E402
 # Config
 # ---------------------------------------------------------------------------
 
-IMAGE_NAME   = os.getenv("IMAGE_NAME")
-API_KEY      = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
-API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
-MODEL_NAME   = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct"
+LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
+HF_TOKEN         = os.getenv("HF_TOKEN")
+API_BASE_URL     = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+MODEL_NAME       = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 
 BENCHMARK    = "clinical-note-scribe"
 TASK_IDS     = list(TASK_REGISTRY.keys())
@@ -279,15 +279,15 @@ def run_task(client: OpenAI, env: ClinicalNoteScribeEnv, task_id: str) -> dict[s
 # ---------------------------------------------------------------------------
 
 def main() -> None:
-    if not API_KEY:
+    if not HF_TOKEN:
         print(
-            "[DEBUG] WARNING: HF_TOKEN / API_KEY is not set. "
+            "[DEBUG] WARNING: HF_TOKEN is not set. "
             "Model calls will fail unless the endpoint requires no auth.",
             file=sys.stderr,
             flush=True,
         )
 
-    client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+    client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
     env = ClinicalNoteScribeEnv()
     results: List[dict[str, Any]] = []
 
