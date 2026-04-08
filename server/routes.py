@@ -92,14 +92,15 @@ router = APIRouter()
     response_model=Observation,
     summary="Reset the environment and start a new episode",
 )
-async def reset(body: ResetRequest) -> Observation:
+async def reset(body: Optional[ResetRequest] = None) -> Observation:
     """Load a task and return the initial ``Observation``.
 
     The underlying environment emits a ``[START]`` log event.
     """
-    _log("START", endpoint="/reset", task_id=body.task_id)
+    task_id = body.task_id if body else None
+    _log("START", endpoint="/reset", task_id=task_id)
     try:
-        obs = _env.reset(task_id=body.task_id)
+        obs = _env.reset(task_id=task_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     return obs
