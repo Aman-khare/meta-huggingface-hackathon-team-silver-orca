@@ -282,6 +282,34 @@
     }
     .empty-state .icon { font-size: 36px; opacity: 0.5; }
     .empty-state p { font-size: 14px; max-width: 280px; }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .layout {
+        display: flex;
+        flex-direction: column;
+        height: auto;
+      }
+      .panel-left {
+        border-right: none;
+        border-bottom: 2px solid var(--border);
+        min-height: 60vh;
+      }
+      .panel {
+        overflow: visible;
+      }
+      .scrollable {
+        overflow-y: visible;
+      }
+      #soapInputs > div {
+        grid-template-columns: 1fr !important;
+      }
+      .soap-grid {
+        grid-template-columns: 1fr;
+      }
+      .header h1 span { font-size: 18px; }
+      .header h1 { font-size: 15px; }
+    }
   </style>
 </head>
 <body>
