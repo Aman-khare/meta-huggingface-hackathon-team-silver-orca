@@ -1,19 +1,18 @@
 """
 Inference Script — Clinical Note Scribe
-===================================
+========================================
 MANDATORY
-- Before submitting, ensure the following variables are defined in your environment configuration:
+- Before submitting, ensure the following variables are defined:
     API_BASE_URL       The API endpoint for the LLM.
     MODEL_NAME         The model identifier to use for inference.
     HF_TOKEN           Your Hugging Face / API key.
-    LOCAL_IMAGE_NAME   The name of the local image to use for the environment
-                       if you are using from_docker_image() method.
+    LOCAL_IMAGE_NAME   The name of the local image for the environment.
 
 - Defaults are set only for API_BASE_URL and MODEL_NAME:
     API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
     MODEL_NAME   = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 
-- The inference script must be named `inference.py` and placed in the root directory.
+- The inference script must be named inference.py and placed in the root directory.
 - Participants must use OpenAI Client for all LLM calls using above variables.
 
 STDOUT FORMAT
@@ -47,29 +46,20 @@ from typing import Any, List, Optional
 
 from openai import OpenAI
 
-# ---------------------------------------------------------------------------
 # Silence the underlying env's stdout JSON logs (redirect them to stderr)
-# ---------------------------------------------------------------------------
 env_logger = logging.getLogger("clinical_note_scribe")
 env_logger.setLevel(logging.INFO)
 env_logger.handlers.clear()
 env_logger.addHandler(logging.StreamHandler(sys.stderr))
 env_logger.propagate = False
 
-
-# ---------------------------------------------------------------------------
 # Environment imports
-# ---------------------------------------------------------------------------
-
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from environment import ClinicalNoteScribeEnv, Action, SOAPNote  # noqa: E402
 from environment.tasks import TASK_REGISTRY                       # noqa: E402
 
-# ---------------------------------------------------------------------------
 # Config
-# ---------------------------------------------------------------------------
-
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 HF_TOKEN         = os.getenv("HF_TOKEN")
 API_BASE_URL     = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
@@ -77,14 +67,11 @@ MODEL_NAME       = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 
 BENCHMARK    = "clinical-note-scribe"
 TASK_IDS     = list(TASK_REGISTRY.keys())
-MAX_STEPS    = 5       # Max steps per task (submit + optional clarify/revise)
+MAX_STEPS    = 5
 MAX_TOKENS   = 1024
 TEMPERATURE  = 0.2
 
-# ---------------------------------------------------------------------------
 # System prompt
-# ---------------------------------------------------------------------------
-
 SYSTEM_PROMPT = textwrap.dedent("""\
     You are a clinical documentation assistant. Given a doctor-patient transcript
     and patient context, generate a concise, clinically accurate SOAP note.
@@ -109,10 +96,7 @@ SYSTEM_PROMPT = textwrap.dedent("""\
 """).strip()
 
 
-# ---------------------------------------------------------------------------
 # Stdout logging — mandatory hackathon format
-# ---------------------------------------------------------------------------
-
 def log_start(task: str, env: str, model: str) -> None:
     print(f"[START] task={task} env={env} model={model}", flush=True)
 
@@ -134,10 +118,7 @@ def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> No
     )
 
 
-# ---------------------------------------------------------------------------
 # Helpers
-# ---------------------------------------------------------------------------
-
 def _build_user_prompt(transcript: str, patient_context: dict[str, Any]) -> str:
     """Build the user message containing the transcript and context."""
     ctx_str = json.dumps(patient_context, indent=2, default=str)
@@ -187,10 +168,7 @@ def get_soap_note(client: OpenAI, transcript: str, patient_context: dict[str, An
         raise
 
 
-# ---------------------------------------------------------------------------
 # Per-task runner
-# ---------------------------------------------------------------------------
-
 def run_task(client: OpenAI, env: ClinicalNoteScribeEnv, task_id: str) -> dict[str, Any]:
     """Run a single task episode and return the result dict."""
     rewards: List[float] = []
@@ -202,18 +180,15 @@ def run_task(client: OpenAI, env: ClinicalNoteScribeEnv, task_id: str) -> dict[s
     log_start(task=task_id, env=BENCHMARK, model=MODEL_NAME)
 
     try:
-        # ---- reset ----
         obs = env.reset(task_id)
 
         for step in range(1, MAX_STEPS + 1):
-            # ---- generate SOAP note via LLM ----
             try:
                 action_dict = get_soap_note(client, obs.transcript, obs.patient_context)
                 action = Action(**action_dict)
                 action_str = f"submit_note(sections=S,O,A,P)"
             except Exception as exc:
-                # On model / parse failure, submit an empty note so all sub-signals
-                # grade to 0.0 (format_valid=0 because fields are empty, grader=0).
+                # On model / parse failure, submit an empty note
                 action = Action(
                     action_type="submit_note",
                     soap_note=SOAPNote(
@@ -226,14 +201,12 @@ def run_task(client: OpenAI, env: ClinicalNoteScribeEnv, task_id: str) -> dict[s
                 action_str = "submit_note(fallback)"
                 last_error = str(exc)
 
-            # ---- step ----
             obs, reward_obj, done, info = env.step(action)
 
             reward_val = reward_obj.value
             rewards.append(reward_val)
             steps_taken = step
 
-            # Check for env-level errors
             error_msg = None
             if obs.errors_so_far:
                 error_msg = obs.errors_so_far[-1]
@@ -252,7 +225,6 @@ def run_task(client: OpenAI, env: ClinicalNoteScribeEnv, task_id: str) -> dict[s
             if done:
                 break
 
-        # Final score = last reward value (already in [0, 1])
         score = rewards[-1] if rewards else 0.0
         score = min(max(score, 0.0), 1.0)
         success = score > 0.0
@@ -274,10 +246,7 @@ def run_task(client: OpenAI, env: ClinicalNoteScribeEnv, task_id: str) -> dict[s
     }
 
 
-# ---------------------------------------------------------------------------
 # Main
-# ---------------------------------------------------------------------------
-
 def main() -> None:
     if not HF_TOKEN:
         print(
@@ -295,7 +264,7 @@ def main() -> None:
         result = run_task(client, env, task_id)
         results.append(result)
 
-    # ---- Summary table ----
+    # Summary table
     print("", file=sys.stderr, flush=True)
     print("=" * 60, file=sys.stderr, flush=True)
     print("  SUMMARY", file=sys.stderr, flush=True)

@@ -1,60 +1,40 @@
-"""FastAPI application for the Clinical Note Scribe environment.
-
-Run locally::
-
-    uvicorn server.app:app --host 0.0.0.0 --port 8000 --reload
-
-Or via Docker (see ``Dockerfile`` in project root).
-"""
+"""FastAPI application for the Clinical Note Scribe environment."""
 
 from __future__ import annotations
 
 import logging
 import sys
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from server.routes import router
 
-# ---------------------------------------------------------------------------
-# Configure root logging → structured JSON to stdout
-# ---------------------------------------------------------------------------
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
-
-# Silence noisy uvicorn access logs so our structured events stay clean
+logging.basicConfig(level=logging.INFO, format="%(message)s", handlers=[logging.StreamHandler(sys.stdout)])
 logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
-
-# ---------------------------------------------------------------------------
-# Application factory
-# ---------------------------------------------------------------------------
 
 app = FastAPI(
     title="Clinical Note Scribe – OpenEnv",
-    description=(
-        "An OpenEnv-compliant environment for evaluating AI agents on "
-        "clinical SOAP-note generation from doctor–patient transcripts."
-    ),
-    version="0.1.0",
+    description="OpenEnv-compliant environment for evaluating AI agents on clinical SOAP-note generation.",
+    version="1.0.0",
 )
-
-from fastapi.responses import RedirectResponse
-
-# Mount all routes at root (/)
 app.include_router(router)
+
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
+
 
 @app.get("/", include_in_schema=False)
 async def root():
-    """Redirect to the FastAPI interactive documentation."""
-    return RedirectResponse(url="/docs")
+    return FileResponse(str(FRONTEND_DIR / "index.html"))
+
 
 def main():
     import uvicorn
     uvicorn.run("server.app:app", host="0.0.0.0", port=7860)
+
 
 if __name__ == "__main__":
     main()

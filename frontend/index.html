@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clinical Note Scribe</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface-2: #242836;
+      --border: #2e3345;
+      --text: #e4e6ef;
+      --text-muted: #8b8fa3;
+      --accent: #4f8cff;
+      --accent-glow: rgba(79, 140, 255, 0.15);
+      --green: #34d399;
+      --red: #f87171;
+      --yellow: #fbbf24;
+      --radius: 10px;
+      --font: 'Inter', -apple-system, sans-serif;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 28px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .header h1 span { font-size: 22px; }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .status-badge {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+    .status-badge.idle { background: var(--surface-2); color: var(--text-muted); }
+    .status-badge.active { background: rgba(52,211,153,0.15); color: var(--green); }
+    .status-badge.done { background: rgba(79,140,255,0.15); color: var(--accent); }
+
+    /* Layout */
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      height: calc(100vh - 57px);
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .panel-left { border-right: 1px solid var(--border); }
+
+    .panel-section {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .scrollable {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+    }
+    .scrollable::-webkit-scrollbar { width: 6px; }
+    .scrollable::-webkit-scrollbar-track { background: transparent; }
+    .scrollable::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    select, input, textarea {
+      font-family: var(--font);
+      font-size: 13px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 7px 10px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    select:focus, input:focus, textarea:focus {
+      border-color: var(--accent);
+    }
+    textarea {
+      width: 100%;
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .btn {
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 7px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #3d7ae8; }
+    .btn-secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover:not(:disabled) { background: var(--border); }
+    .btn-green { background: var(--green); color: #0f1117; }
+    .btn-green:hover:not(:disabled) { background: #2bc48d; }
+
+    /* Transcript */
+    .transcript-box {
+      font-size: 13px;
+      white-space: pre-wrap;
+      color: var(--text);
+      line-height: 1.7;
+    }
+    .transcript-box .speaker-doctor { color: var(--accent); font-weight: 500; }
+    .transcript-box .speaker-patient { color: var(--green); font-weight: 500; }
+
+    /* Context cards */
+    .context-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 8px;
+    }
+    .context-card {
+      background: var(--surface-2);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .context-card .label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 3px;
+    }
+    .context-card .value {
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    /* SOAP Draft */
+    .soap-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .soap-card {
+      background: var(--surface-2);
+      border-radius: 8px;
+      padding: 12px 14px;
+      border-left: 3px solid var(--border);
+    }
+    .soap-card.s { border-left-color: #60a5fa; }
+    .soap-card.o { border-left-color: #34d399; }
+    .soap-card.a { border-left-color: #fbbf24; }
+    .soap-card.p { border-left-color: #c084fc; }
+    .soap-card .soap-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .soap-card.s .soap-label { color: #60a5fa; }
+    .soap-card.o .soap-label { color: #34d399; }
+    .soap-card.a .soap-label { color: #fbbf24; }
+    .soap-card.p .soap-label { color: #c084fc; }
+    .soap-card .soap-text {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* Reward bar */
+    .reward-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+    }
+    .reward-bar .score-value {
+      font-size: 28px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .reward-meter {
+      flex: 1;
+      height: 8px;
+      background: var(--surface-2);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .reward-meter-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--accent), var(--green));
+      transition: width 0.4s ease;
+    }
+
+    /* Action form */
+    .action-form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .action-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+    .action-row select { min-width: 160px; }
+
+    /* Log */
+    .log-container {
+      font-size: 12px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      color: var(--text-muted);
+      max-height: 120px;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+    .log-entry {
+      padding: 2px 0;
+      border-bottom: 1px solid rgba(46, 51, 69, 0.4);
+    }
+    .log-entry .log-time { color: var(--border); margin-right: 8px; }
+    .log-entry.error { color: var(--red); }
+    .log-entry.success { color: var(--green); }
+
+    /* Empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-muted);
+      text-align: center;
+      gap: 12px;
+    }
+    .empty-state .icon { font-size: 36px; opacity: 0.5; }
+    .empty-state p { font-size: 14px; max-width: 280px; }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <h1><span>🏥</span> Clinical Note Scribe</h1>
+    <div class="header-right">
+      <span class="status-badge idle" id="statusBadge">Idle</span>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- Left Panel: Transcript + Context -->
+    <div class="panel panel-left">
+      <div class="panel-section">
+        <div class="controls">
+          <select id="taskSelect">
+            <option value="easy_routine_checkup">🟢 Easy — Routine Check-Up</option>
+            <option value="medium_chronic_disease_followup">🟡 Medium — Chronic Follow-Up</option>
+            <option value="hard_complex_er_visit">🔴 Hard — Complex ER Visit</option>
+          </select>
+          <button class="btn btn-primary" id="resetBtn">Reset</button>
+        </div>
+      </div>
+
+      <div class="panel-section" id="contextSection" style="display:none;">
+        <div class="panel-section-title">Patient Context</div>
+        <div class="context-grid" id="contextGrid"></div>
+      </div>
+
+      <div class="scrollable" id="transcriptArea">
+        <div class="empty-state">
+          <div class="icon">📋</div>
+          <p>Select a task and click <strong>Reset</strong> to load the transcript.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Panel: Actions + Draft + Reward -->
+    <div class="panel">
+
+      <div class="panel-section" id="actionSection" style="display:none;">
+        <div class="panel-section-title">Action</div>
+        <div class="action-form">
+          <div class="action-row">
+            <select id="actionType">
+              <option value="submit_note">Submit Note</option>
+              <option value="revise_section">Revise Section</option>
+              <option value="request_clarify">Request Clarify</option>
+            </select>
+            <select id="sectionSelect" style="display:none;">
+              <option value="S">Subjective</option>
+              <option value="O">Objective</option>
+              <option value="A">Assessment</option>
+              <option value="P">Plan</option>
+            </select>
+            <button class="btn btn-green" id="stepBtn">Send</button>
+          </div>
+          <div id="soapInputs">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+              <textarea id="inputS" placeholder="Subjective..." rows="3"></textarea>
+              <textarea id="inputO" placeholder="Objective..." rows="3"></textarea>
+              <textarea id="inputA" placeholder="Assessment..." rows="3"></textarea>
+              <textarea id="inputP" placeholder="Plan..." rows="3"></textarea>
+            </div>
+          </div>
+          <div id="reviseInput" style="display:none;">
+            <textarea id="inputRevision" placeholder="Revision text..." rows="3"></textarea>
+          </div>
+          <div id="clarifyInput" style="display:none;">
+            <input id="inputClarify" type="text" placeholder="Your question..." style="width:100%;">
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-section" id="rewardSection" style="display:none;">
+        <div class="panel-section-title">Reward</div>
+        <div class="reward-bar">
+          <div class="score-value" id="scoreValue">0.00</div>
+          <div class="reward-meter">
+            <div class="reward-meter-fill" id="rewardFill" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="scrollable" id="draftArea">
+        <div class="empty-state" id="draftEmpty">
+          <div class="icon">📝</div>
+          <p>Your SOAP note draft will appear here after you submit or revise.</p>
+        </div>
+        <div id="soapDraft" style="display:none;">
+          <div class="panel-section-title" style="margin-bottom:12px;">Current Draft</div>
+          <div class="soap-grid" id="soapGrid"></div>
+        </div>
+      </div>
+
+      <div class="panel-section" style="border-top:1px solid var(--border); border-bottom:none;">
+        <div class="panel-section-title">Log</div>
+        <div class="log-container" id="logContainer"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

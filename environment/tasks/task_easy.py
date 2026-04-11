@@ -1,85 +1,37 @@
-"""Easy task — routine check-up.
-
-Grader uses keyword-based clinical rubric scoring to evaluate the SOAP note
-against expected findings from a simple cold / blood pressure check visit.
-"""
+"""Easy task — routine check-up."""
 
 from __future__ import annotations
-
 from typing import Any
-
 from environment.models import SOAPNote
-
-
-# ---------------------------------------------------------------------------
-# Task definition
-# ---------------------------------------------------------------------------
 
 EASY_TASK: dict[str, Any] = {
     "task_id": "easy_routine_checkup",
     "description": "Generate a SOAP note for a routine annual check-up visit.",
     "transcript_file": "data/transcripts/easy.txt",
     "patient_context": {
-        "patient_id": "P-1001",
-        "name": "Jane Doe",
-        "age": 34,
-        "sex": "F",
-        "known_conditions": [],
-        "current_medications": [],
-        "allergies": ["Penicillin"],
+        "patient_id": "P-1001", "name": "Jane Doe", "age": 34, "sex": "F",
+        "known_conditions": [], "current_medications": [], "allergies": ["Penicillin"],
     },
     "max_steps": 5,
 }
 
 
-# ---------------------------------------------------------------------------
-# Grader
-# ---------------------------------------------------------------------------
-
 def grade_easy(soap_note: SOAPNote, task: dict[str, Any]) -> dict[str, float]:
-    """Score a submitted SOAP note against the easy-task rubric.
+    s, o, a, p = (soap_note.subjective.lower(), soap_note.objective.lower(),
+                  soap_note.assessment.lower(), soap_note.plan.lower())
 
-    Checks for mention of key clinical findings from the transcript:
-    chief complaints, vitals, viral URI assessment, and supportive plan.
+    s_score = 0.5 * any(k in s for k in ("sore throat", "runny nose", "congestion")) \
+            + 0.5 * any(k in s for k in ("5 days", "five days", "headache"))
+    o_score = 0.5 * any(k in o for k in ("118/76", "118 over 76", "blood pressure")) \
+            + 0.5 * any(k in o for k in ("72", "heart rate", "lungs clear"))
+    a_score = 1.0 * any(k in a for k in ("viral", "uri", "upper respiratory"))
+    p_score = 0.5 * any(k in p for k in ("fluids", "rest", "hydrat")) \
+            + 0.5 * any(k in p for k in ("dayquil", "follow", "return"))
 
-    Returns
-    -------
-    dict mapping signal names to float scores in [0, 1].
-    """
-    text_s = soap_note.subjective.lower()
-    text_o = soap_note.objective.lower()
-    text_a = soap_note.assessment.lower()
-    text_p = soap_note.plan.lower()
-
-    # 1. Subjective — chief complaints
-    s_score = 0.0
-    if "sore throat" in text_s or "runny nose" in text_s or "congestion" in text_s:
-        s_score += 0.5
-    if "5 days" in text_s or "five days" in text_s or "headache" in text_s:
-        s_score += 0.5
-
-    # 2. Objective — vitals
-    o_score = 0.0
-    if "118/76" in text_o or "118 over 76" in text_o or "blood pressure" in text_o:
-        o_score += 0.5
-    if "72" in text_o or "heart rate" in text_o or "lungs clear" in text_o:
-        o_score += 0.5
-
-    # 3. Assessment — viral URI
-    a_score = 0.0
-    if "viral" in text_a or "uri" in text_a or "upper respiratory" in text_a:
-        a_score += 1.0
-
-    # 4. Plan — supportive care
-    p_score = 0.0
-    if "fluids" in text_p or "rest" in text_p or "hydrat" in text_p:
-        p_score += 0.5
-    if "dayquil" in text_p or "follow" in text_p or "return" in text_p:
-        p_score += 0.5
-
+    clamp = lambda v: max(0.01, min(v, 0.99))
     return {
-        "subjective_accuracy": max(0.01, min(s_score, 0.99)),
-        "objective_accuracy": max(0.01, min(o_score, 0.99)),
-        "assessment_accuracy": max(0.01, min(a_score, 0.99)),
-        "plan_accuracy": max(0.01, min(p_score, 0.99)),
+        "subjective_accuracy": clamp(s_score),
+        "objective_accuracy": clamp(o_score),
+        "assessment_accuracy": clamp(a_score),
+        "plan_accuracy": clamp(p_score),
     }
