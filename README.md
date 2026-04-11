@@ -1,3 +1,12 @@
+---
+title: Clinical Note Scribe
+emoji: 🏥
+colorFrom: blue
+colorTo: green
+sdk: docker
+pinned: false
+---
+
 # Clinical Note Scribe
 An **OpenEnv-compliant** environment for evaluating AI agents on clinical SOAP-note generation from doctor–patient transcripts.
 
