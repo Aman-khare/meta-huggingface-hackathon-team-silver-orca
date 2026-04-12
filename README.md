@@ -3,6 +3,16 @@ An **OpenEnv-compliant** environment for evaluating AI agents on clinical SOAP-n
 
 Built for the **Meta × Hugging Face OpenEnv Hackathon**.
 
+#Clinical Note Scribe
+Medical documentation is one of the most time-consuming parts of a doctor's day. After every patient visit, clinicians spend significant time converting spoken conversations into structured clinical notes — time that could be spent on patient care instead.
+Clinical Note Scribe is a reinforcement learning training environment where an AI agent learns to do exactly that: listen to a doctor-patient conversation and produce a well-structured, accurate, and safe clinical note in SOAP format.
+# Interesting part 
+The interesting part about this project is that we have created a frontend which shiws live what number of reward is given on the beasis of submition.
+
+#Three levels of difficulty
+Tasks range from a routine check-up all the way to a chaotic ER visit with overlapping symptoms and urgent orders — each with its own grader and reward logic.
+
+
 ---
 
 ## Environment Description
