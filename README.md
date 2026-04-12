@@ -1,5 +1,5 @@
 # Clinical Note Scribe
-An **OpenEnv-compliant** environment for evaluating AI agents on clinical SOAP-note generation from doctor–patient transcripts.
+An **OpenEnv-compliant** environment for evaluating AI agents on clinical SOAP note generation from doctor patient transcripts.
 
 Built for the **Meta × Hugging Face OpenEnv Hackathon**.
 
