@@ -11,7 +11,7 @@ Clinical Note Scribe is a reinforcement learning training environment where an A
 The interesting part about this project is that we have created a frontend which shows live what number of reward is given on the basis of submission.
 
 Three levels of difficulty
-Tasks range from a routine check-up all the way to a chaotic ER visit with overlapping symptoms and urgent orders — each with its own grader and reward logic.
+Tasks range from a routine check-up all the way to a chaotic ER visit with overlapping symptoms and urgent orders each with its own grader and reward logic.
 
 
 ---
