@@ -83,6 +83,14 @@
       padding: 16px 20px;
       border-bottom: 1px solid var(--border);
     }
+    .panel-section.resizable {
+      resize: vertical;
+      overflow: hidden;
+      min-height: 80px;
+    }
+    .panel-section.resizable:hover {
+        overflow: auto;
+    }
     .panel-section-title {
       font-size: 11px;
       font-weight: 600;
@@ -257,8 +265,10 @@
       font-size: 12px;
       font-family: 'SF Mono', 'Fira Code', monospace;
       color: var(--text-muted);
-      max-height: 120px;
+      height: 120px;
+      min-height: 60px;
       overflow-y: auto;
+      resize: vertical;
       padding: 8px 0;
     }
     .log-entry {
@@ -336,7 +346,7 @@
         </div>
       </div>
 
-      <div class="panel-section" id="contextSection" style="display:none;">
+      <div class="panel-section resizable" id="contextSection" style="display:none;">
         <div class="panel-section-title">Patient Context</div>
         <div class="context-grid" id="contextGrid"></div>
       </div>
@@ -352,7 +362,7 @@
     <!-- Right Panel: Actions + Draft + Reward -->
     <div class="panel">
 
-      <div class="panel-section" id="actionSection" style="display:none;">
+      <div class="panel-section resizable" id="actionSection" style="display:none;">
         <div class="panel-section-title">Action</div>
         <div class="action-form">
           <div class="action-row">
@@ -386,7 +396,7 @@
         </div>
       </div>
 
-      <div class="panel-section" id="rewardSection" style="display:none;">
+      <div class="panel-section resizable" id="rewardSection" style="display:none;">
         <div class="panel-section-title">Reward</div>
         <div class="reward-bar">
           <div class="score-value" id="scoreValue">0.00</div>
