@@ -85,11 +85,10 @@
     }
     .panel-section.resizable {
       resize: vertical;
-      overflow: hidden;
+      overflow-y: auto;
+      overflow-x: hidden;
       min-height: 80px;
-    }
-    .panel-section.resizable:hover {
-        overflow: auto;
+      max-height: 250px;
     }
     .panel-section-title {
       font-size: 11px;
